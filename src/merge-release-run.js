@@ -90,9 +90,9 @@ const run = async () => {
   } else {
     exec(`npm publish`, deployDir)
   }
-  exec(`git checkout package.json`) // cleanup
-  exec(`git tag ${newVersion}`)
-  exec(`echo "::set-output name=version::${newVersion}"`) // set action event.{STEP_ID}.output.version
+//   exec(`git checkout package.json`) // cleanup
+//   exec(`git tag ${newVersion}`)
+//   exec(`echo "::set-output name=version::${newVersion}"`) // set action event.{STEP_ID}.output.version
 
   /*
   const env = process.env
