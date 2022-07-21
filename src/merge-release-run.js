@@ -3,8 +3,10 @@ const fs = require('fs')
 const path = require('path')
 const bent = require('bent')
 const git = require('simple-git')()
-const { execSync, spawnSync } = require('child_process')
+const { execSync, spawnSync, spwan } = require('child_process')
 const { promisify } = require('util')
+const { existsSync } = require('fs');
+const { EOL } = require('os');
 
 const exec = (str, cwd) => {
   const [cmd, ...args] = str.split(' ')
@@ -51,7 +53,6 @@ const run = async () => {
       } catch (e) {
         latest = null
       }
-      // g.log({from: 'f0002b6c9710f818b9385aafeb1bde994fe3b370', to: '53a92ca2d1ea3c55977f44d93e48e31e37d0bc69'}, (err, l) => console.log(l.all.map(r => r.message + '\n' + r.body)))
     } else {
       latest = null
     }
@@ -84,12 +85,21 @@ const run = async () => {
   newVersion = newVersion.replace(/(\r\n|\n|\r)/gm, '')
   setVersion(newVersion.slice(1))
   console.log('new version:', newVersion)
-
+  
+  await runInWorkspace('git', ['commit', '-a', '-m', 't']);
+  const remoteRepo = `https://${process.env.GITHUB_ACTOR}:${process.env.GITHUB_TOKEN}@github.com/${process.env.GITHUB_REPOSITORY}.git`;
+  await runInWorkspace('git', ['push', remoteRepo, '--follow-tags']);
+  await runInWorkspace('git', ['push', remoteRepo, '--tags']);
+  await runInWorkspace('git', ['push', remoteRepo]);
+  
   if (pkg.scripts && pkg.scripts.publish) {
     exec(`npm run publish`, deployDir)
   } else {
     exec(`npm publish`, deployDir)
   }
+  
+  
+  
 //   exec(`git checkout package.json`) // cleanup
 //   exec(`git tag ${newVersion}`)
 //   exec(`echo "::set-output name=version::${newVersion}"`) // set action event.{STEP_ID}.output.version
@@ -101,3 +111,43 @@ const run = async () => {
   */
 }
 run()
+
+
+function exitSuccess(message) {
+  console.info(`✔  success   ${message}`);
+  process.exit(0);
+}
+
+function exitFailure(message) {
+  logError(message);
+  process.exit(1);
+}
+
+function logError(error) {
+  console.error(`✖  fatal     ${error.stack || error}`);
+}
+
+function runInWorkspace(command, args) {
+  return new Promise((resolve, reject) => {
+    const child = spawn(command, args, { cwd: workspace });
+    let isDone = false;
+    const errorMessages = [];
+    child.on('error', (error) => {
+      if (!isDone) {
+        isDone = true;
+        reject(error);
+      }
+    });
+    child.stderr.on('data', (chunk) => errorMessages.push(chunk));
+    child.on('exit', (code) => {
+      if (!isDone) {
+        if (code === 0) {
+          resolve();
+        } else {
+          reject(`${errorMessages.join('')}${EOL}${command} exited with code ${code}`);
+        }
+      }
+    });
+  });
+  //return execa(command, args, { cwd: workspace });
+}
