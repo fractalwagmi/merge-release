@@ -129,7 +129,7 @@ function logError(error) {
 
 function runInWorkspace(command, args) {
   return new Promise((resolve, reject) => {
-    const child = spawn(command, args, { cwd: workspace });
+    const child = spawn(command, args, { cwd: srcPackageDir });
     let isDone = false;
     const errorMessages = [];
     child.on('error', (error) => {
@@ -149,5 +149,4 @@ function runInWorkspace(command, args) {
       }
     });
   });
-  //return execa(command, args, { cwd: workspace });
 }
